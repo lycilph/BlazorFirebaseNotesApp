@@ -1,0 +1,72 @@
+﻿@page "/"
+@inject BlazorFirebaseNotesApp.Services.FirebaseService FirebaseService
+@* @rendermode InteractiveWebAssembly *@
+
+<PageTitle>Blazor Notes</PageTitle>
+
+<h1>Blazor Notes with Firebase</h1>
+
+<p>A simple notes app connected to a Google Firestore database.</p>
+
+<div class="my-3">
+    <input @bind="newNoteText" class="form-control" placeholder="Enter a new note..." @onkeydown="HandleKeyDown" />
+    <button class="btn btn-primary mt-2" @onclick="AddNote">Add Note</button>
+</div>
+
+@if (notes == null)
+{
+    <p><em>Loading notes...</em></p>
+}
+else
+{
+    <ul class="list-group">
+        @foreach (var note in notes)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                @note.Text
+                <button class="btn btn-danger btn-sm" @onclick="() => DeleteNote(note.Id)">Delete</button>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private List<Note>? notes;
+    private string newNoteText = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadNotes();
+    }
+
+    private async Task LoadNotes()
+    {
+        notes = await FirebaseService.GetNotesAsync();
+        StateHasChanged(); // Re-render the component
+    }
+
+    private async Task AddNote()
+    {
+        if (!string.IsNullOrWhiteSpace(newNoteText))
+        {
+            var newNote = new Note { Text = newNoteText };
+            await FirebaseService.AddNoteAsync(newNote);
+            newNoteText = string.Empty; // Clear the input
+            await LoadNotes(); // Refresh the list
+        }
+    }
+
+    private async Task DeleteNote(string id)
+    {
+        await FirebaseService.DeleteNoteAsync(id);
+        await LoadNotes(); // Refresh the list
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await AddNote();
+        }
+    }
+}
