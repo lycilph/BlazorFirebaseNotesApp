@@ -1,6 +1,7 @@
 ﻿@page "/"
 @inject BlazorFirebaseNotesApp.Services.FirebaseService FirebaseService
-@* @rendermode InteractiveWebAssembly *@
+@attribute [Authorize]
+@rendermode InteractiveWebAssembly
 
 <PageTitle>Blazor Notes</PageTitle>
 

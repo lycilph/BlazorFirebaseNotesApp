@@ -1,0 +1,13 @@
+﻿@page "/logout"
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+@inject Services.FirebaseAuthStateProvider authStateProvider
+@inject NavigationManager NavigationManager
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await localStorage.RemoveItemAsync("authToken");
+        authStateProvider.NotifyUserLogout();
+        NavigationManager.NavigateTo("/login");
+    }
+}

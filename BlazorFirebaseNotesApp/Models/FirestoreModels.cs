@@ -10,6 +10,7 @@ public class StringValue
 public class NoteFields
 {
     public StringValue Text { get; set; } = new();
+    public StringValue UserId { get; set; } = new(); // Add this line
 }
 
 // Represents a full Firestore document.
