@@ -1,8 +1,9 @@
 name: Deploy to GitHub Pages
 
-#on:
+on:
 #  push:
 #    branches: [ main ] # Trigger the workflow on push to the main branch
+  workflow_dispatch:
 
 jobs:
   deploy-to-github-pages:
