@@ -1,0 +1,55 @@
+name: Deploy to GitHub Pages
+
+#on:
+#  push:
+#    branches: [ main ] # Trigger the workflow on push to the main branch
+
+jobs:
+  deploy-to-github-pages:
+    # Use the latest version of Ubuntu
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+    # 1. Checkout the repository
+    - uses: actions/checkout@v4
+
+    # 2. Setup .NET 8
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    # 3. Publish the project
+    - name: Publish .NET Project
+      run: dotnet publish BlazorFirebaseNotes.csproj -c Release -o release --nologo
+
+    # 4. Change the base-tag in index.html
+    # This is a crucial step for GitHub Pages deployment
+    - name: Change base-tag in index.html from / to /blazor-firebase-notes/
+      run: |
+        sed -i 's/<base href="\/" \/>/<base href="\/BlazorFirebaseNotesApp\/" \/>/g' release/wwwroot/index.html
+      # IMPORTANT: Replace blazor-firebase-notes with your repository name!
+
+    # 5. Add a .nojekyll file to the output
+    - name: Add .nojekyll file
+      run: touch release/wwwroot/.nojekyll
+
+    # 6. Upload the artifact
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: 'release/wwwroot'
+
+    # 7. Deploy to GitHub Pages
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
