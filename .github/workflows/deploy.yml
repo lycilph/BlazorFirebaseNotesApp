@@ -20,37 +20,41 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-    # 1. Checkout the repository
+    # Checkout the repository
     - uses: actions/checkout@v4
 
-    # 2. Setup .NET 9
+    # Setup .NET
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '9.0.x'
 
-    # 3. Publish the project
+    # Publish the project
     - name: Publish .NET Project
       run: dotnet publish BlazorFirebaseNotesApp.csproj -c Release -o release --nologo
 
-    # 4. Change the base-tag in index.html
+    # Change the base-tag in index.html
     # This is a crucial step for GitHub Pages deployment
     - name: Change base-tag in index.html from / to /BlazorFirebaseNotesApp/
       run: |
         sed -i 's/<base href="\/" \/>/<base href="\/BlazorFirebaseNotesApp\/" \/>/g' release/wwwroot/index.html
       # IMPORTANT: Replace blazor-firebase-notes with your repository name!
 
-    # 5. Add a .nojekyll file to the output
+    # Add a .nojekyll file to the output
     - name: Add .nojekyll file
       run: touch release/wwwroot/.nojekyll
-
-    # 6. Upload the artifact
+    
+    # Copy index.html to 404.html for SPA routing
+    - name: copy index.html to 404.html
+      run: cp release/wwwroot/index.html release/wwwroot/404.html
+      
+    # Upload the artifact
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
       with:
         path: 'release/wwwroot'
 
-    # 7. Deploy to GitHub Pages
+    # Deploy to GitHub Pages
     - name: Deploy to GitHub Pages
       id: deployment
       uses: actions/deploy-pages@v4
