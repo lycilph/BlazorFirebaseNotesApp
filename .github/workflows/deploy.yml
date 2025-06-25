@@ -23,19 +23,19 @@ jobs:
     # 1. Checkout the repository
     - uses: actions/checkout@v4
 
-    # 2. Setup .NET 8
+    # 2. Setup .NET 9
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '8.0.x'
+        dotnet-version: '9.0.x'
 
     # 3. Publish the project
     - name: Publish .NET Project
-      run: dotnet publish BlazorFirebaseNotes.csproj -c Release -o release --nologo
+      run: dotnet publish BlazorFirebaseNotesApp.csproj -c Release -o release --nologo
 
     # 4. Change the base-tag in index.html
     # This is a crucial step for GitHub Pages deployment
-    - name: Change base-tag in index.html from / to /blazor-firebase-notes/
+    - name: Change base-tag in index.html from / to /BlazorFirebaseNotesApp/
       run: |
         sed -i 's/<base href="\/" \/>/<base href="\/BlazorFirebaseNotesApp\/" \/>/g' release/wwwroot/index.html
       # IMPORTANT: Replace blazor-firebase-notes with your repository name!
