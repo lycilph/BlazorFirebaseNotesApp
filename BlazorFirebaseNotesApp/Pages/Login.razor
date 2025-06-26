@@ -57,11 +57,9 @@
             {
                 await localStorage.SetItemAsync("authToken", response.idToken);
                 authStateProvider.NotifyUserAuthentication(response.idToken);
-
                 // THE FIX: Wait for the next UI render cycle before navigating.
                 // This gives the AuthorizeRouteView time to recognize the new auth state.
                 await Task.Yield();
-
                 // Navigate to the return URL if it exists, otherwise to the home page.
                 NavigationManager.NavigateTo(ReturnUrl ?? "", forceLoad: false);
             }
@@ -78,30 +76,59 @@
 
     private async Task HandleSignUp()
     {
-        // We'll handle signup separately to include the email verification step
-        errorMessage = null;
+        errorMessage = string.Empty;
         try
         {
-            var response = await AuthService.SignUpAsync(email, password);
-            if (!string.IsNullOrEmpty(response?.idToken))
-            {
-                // Sign up was successful, now send the verification email
-                await AuthService.SendVerificationEmailAsync(response.idToken);
-
-                // Also update the name
-                var name = email.Split('@').First();
-                var updateResponse = await AuthService.UpdateProfileAsync(response.idToken, name);
-
-                // Now proceed with the normal login flow
-                await localStorage.SetItemAsync("authToken", response.idToken);
-                authStateProvider.NotifyUserAuthentication(response.idToken);
-                await Task.Yield();
-                NavigationManager.NavigateTo(ReturnUrl ?? "", forceLoad: false);
-            }
-            else
+            // STEP 1: Sign up and get the initial token and the crucial refresh token.
+            var initialResponse = await AuthService.SignUpAsync(email, password);
+            if (initialResponse == null || string.IsNullOrEmpty(initialResponse.refreshToken))
             {
                 errorMessage = "Sign up failed. The email may already be in use.";
+                return;
             }
+            
+            // STEP 2: Update the profile. We fire-and-forget this, trusting it works on the backend.
+            // We do NOT use the response from this call.
+            var name = email.Split('@').First();
+            await AuthService.UpdateProfileAsync(initialResponse.idToken, name);
+            
+            // STEP 3: Refresh the token. This is where we get our "golden" token with the name.
+            var finalTokenResponse = await AuthService.RefreshTokenAsync(initialResponse.refreshToken);
+            if (finalTokenResponse == null || string.IsNullOrEmpty(finalTokenResponse.IdToken))
+            {
+                errorMessage = "Could not finalize sign up. Please try logging in.";
+                return;
+            }
+
+            // Send verification email using the final, most powerful token.
+            await AuthService.SendVerificationEmailAsync(finalTokenResponse.IdToken);
+
+            // Now, save the FINAL token and proceed.
+            await localStorage.SetItemAsync("authToken", finalTokenResponse.IdToken);
+            authStateProvider.NotifyUserAuthentication(finalTokenResponse.IdToken);
+            await Task.Yield();
+            NavigationManager.NavigateTo(ReturnUrl ?? "", forceLoad: false);
+
+            // var response = await AuthService.SignUpAsync(email, password);
+            // if (!string.IsNullOrEmpty(response?.idToken))
+            // {
+            //     // Sign up was successful, now send the verification email
+            //     await AuthService.SendVerificationEmailAsync(response.idToken);
+
+            //     // Also update the name
+            //     var name = email.Split('@').First();
+            //     var updateResponse = await AuthService.UpdateProfileAsync(response.idToken, name);
+
+            //     // Now proceed with the normal login flow
+            //     await localStorage.SetItemAsync("authToken", response.idToken);
+            //     authStateProvider.NotifyUserAuthentication(response.idToken);
+            //     await Task.Yield();
+            //     NavigationManager.NavigateTo(ReturnUrl ?? "", forceLoad: false);
+            // }
+            // else
+            // {
+            //     errorMessage = "Sign up failed. The email may already be in use.";
+            // }
         }
         catch (Exception ex)
         {
