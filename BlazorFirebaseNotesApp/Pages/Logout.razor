@@ -4,10 +4,15 @@
 @inject NavigationManager NavigationManager
 
 @code {
-    protected override async Task OnInitializedAsync()
+    // Use OnAfterRenderAsync for navigation actions
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        await localStorage.RemoveItemAsync("authToken");
-        authStateProvider.NotifyUserLogout();
-        NavigationManager.NavigateTo("/login");
+        // Ensure this logic only runs ONCE, on the very first render.
+        if (firstRender)
+        {
+            await localStorage.RemoveItemAsync("authToken");
+            authStateProvider.NotifyUserLogout();
+            NavigationManager.NavigateTo("/login");
+        }
     }
 }

@@ -31,37 +31,48 @@
     private string email;
     private string password;
     private string errorMessage;
+    
+    // This property will be populated from the URL, e.g., /login?returnUrl=%2F
+    [SupplyParameterFromQuery]
+    public string ReturnUrl { get; set; }
 
     private async Task HandleLogin()
     {
-        errorMessage = null;
-        var response = await AuthService.LoginAsync(email, password);
-        if (!string.IsNullOrEmpty(response?.idToken))
-        {
-            await localStorage.SetItemAsync("authToken", response.idToken);
-            authStateProvider.NotifyUserAuthentication(response.idToken);
-            NavigationManager.NavigateTo("/");
-        }
-        else
-        {
-            errorMessage = "Login failed. Please check your credentials.";
-        }
+        await Authenticate(async () => await AuthService.LoginAsync(email, password));
     }
 
     private async Task HandleSignUp()
     {
-        errorMessage = null;
-        var response = await AuthService.SignUpAsync(email, password);
-        if (!string.IsNullOrEmpty(response?.idToken))
+        await Authenticate(async () => await AuthService.SignUpAsync(email, password));
+    }
+
+    // A shared method to handle both login and sign up logic
+    private async Task Authenticate(Func<Task<FirebaseAuthResponse>> authAction)
+    {
+        errorMessage = string.Empty;
+        try
         {
-            // Automatically log in after sign up
-            await localStorage.SetItemAsync("authToken", response.idToken);
-            authStateProvider.NotifyUserAuthentication(response.idToken);
-            NavigationManager.NavigateTo("/");
+            var response = await authAction();
+            if (!string.IsNullOrEmpty(response?.idToken))
+            {
+                await localStorage.SetItemAsync("authToken", response.idToken);
+                authStateProvider.NotifyUserAuthentication(response.idToken);
+
+                // THE FIX: Wait for the next UI render cycle before navigating.
+                // This gives the AuthorizeRouteView time to recognize the new auth state.
+                await Task.Yield();
+
+                // Navigate to the return URL if it exists, otherwise to the home page.
+                NavigationManager.NavigateTo(ReturnUrl ?? "/", forceLoad: false);
+            }
+            else
+            {
+                errorMessage = "Authentication failed. Please check your credentials or the email may be in use.";
+            }
         }
-        else
+        catch (Exception ex)
         {
-            errorMessage = "Sign up failed. The email may already be in use.";
+            errorMessage = $"An error occurred: {ex.Message}";
         }
     }
 }
