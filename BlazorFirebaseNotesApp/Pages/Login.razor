@@ -63,7 +63,7 @@
                 await Task.Yield();
 
                 // Navigate to the return URL if it exists, otherwise to the home page.
-                NavigationManager.NavigateTo(ReturnUrl ?? "/", forceLoad: false);
+                NavigationManager.NavigateTo(ReturnUrl ?? "", forceLoad: false);
             }
             else
             {
