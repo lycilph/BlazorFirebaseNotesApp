@@ -27,10 +27,6 @@ namespace BlazorFirebaseNotesApp
             // We use a standard named HttpClient for this, as it doesn't need the auth token.
             builder.Services.AddHttpClient<AuthService>();
 
-
-            // Register our new message handler. It should be transient.
-            builder.Services.AddTransient<FirebaseAuthenticationHandler>();
-
             // Get the Firebase Project ID from configuration
             var firebaseProjectId = builder.Configuration["Firebase:ProjectId"];
 
@@ -40,14 +36,7 @@ namespace BlazorFirebaseNotesApp
             {
                 // Set the base address for all requests made by the FirebaseService
                 client.BaseAddress = new Uri($"https://firestore.googleapis.com/");
-            })
-            // Add our custom handler to the pipeline for this specific HttpClient.
-            // Every request made by FirebaseService will now go through our handler first.
-            .AddHttpMessageHandler<FirebaseAuthenticationHandler>();
-
-
-            // Add our Firebase data service
-            //builder.Services.AddScoped<FirebaseService>();
+            });
 
             await builder.Build().RunAsync();
         }
