@@ -39,6 +39,25 @@ public class AuthService
         var request = new { oobCode };
         await _http.PostAsJsonAsync($"{BaseUrl}update?key={_apiKey}", request);
     }
+
+    /// <summary>
+    /// Updates the user's profile, e.g., setting their display name.
+    /// </summary>
+    /// <param name="idToken">The user's current ID token.</param>
+    /// <param name="displayName">The name to set for the user.</param>
+    /// <returns>A new auth response containing an updated ID token.</returns>
+    public async Task<FirebaseAuthResponse> UpdateProfileAsync(string idToken, string displayName)
+    {
+        var request = new
+        {
+            idToken,
+            displayName,
+            returnSecureToken = true // CRITICAL: Ask for a new token
+        };
+
+        var response = await _http.PostAsJsonAsync($"{BaseUrl}update?key={_apiKey}", request);
+        return await response.Content.ReadFromJsonAsync<FirebaseAuthResponse>();
+    }
 }
 
 // Helper class to deserialize Firebase Auth responses

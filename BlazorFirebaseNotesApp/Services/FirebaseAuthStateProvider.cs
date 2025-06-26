@@ -57,7 +57,7 @@ public class FirebaseAuthStateProvider : AuthenticationStateProvider
         if (keyValuePairs == null)
             throw new ArgumentNullException(nameof(keyValuePairs));
 
-        if (keyValuePairs.TryGetValue(ClaimTypes.Name, out var name))
+        if (keyValuePairs.TryGetValue("name", out var name))
             claims.Add(new Claim(ClaimTypes.Name, name.ToString()));
         if (keyValuePairs.TryGetValue("user_id", out var userId)) // Firebase uses "user_id"
             claims.Add(new Claim(ClaimTypes.NameIdentifier, userId.ToString()));

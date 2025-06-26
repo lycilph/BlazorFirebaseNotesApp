@@ -31,11 +31,11 @@
     private string email;
     private string password;
     private string errorMessage;
-    
+
     // This property will be populated from the URL, e.g., /login?returnUrl=%2F
     [SupplyParameterFromQuery]
     public string ReturnUrl { get; set; }
-    
+
     // This is the new method that handles the key press
     private async Task HandleKeyDown(KeyboardEventArgs e)
     {
@@ -87,6 +87,10 @@
             {
                 // Sign up was successful, now send the verification email
                 await AuthService.SendVerificationEmailAsync(response.idToken);
+
+                // Also update the name
+                var name = email.Split('@').First();
+                var updateResponse = await AuthService.UpdateProfileAsync(response.idToken, name);
 
                 // Now proceed with the normal login flow
                 await localStorage.SetItemAsync("authToken", response.idToken);
