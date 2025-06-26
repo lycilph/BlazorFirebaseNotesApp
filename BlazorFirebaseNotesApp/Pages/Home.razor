@@ -1,5 +1,8 @@
 ﻿@page "/"
-@inject BlazorFirebaseNotesApp.Services.FirebaseService FirebaseService
+@inject Services.FirebaseService FirebaseService
+@inject Services.AuthService AuthService
+@inject Services.FirebaseAuthStateProvider authStateProvider
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
 @attribute [Authorize]
 @rendermode InteractiveWebAssembly
 
@@ -7,43 +10,100 @@
 
 <h1>Blazor Notes with Firebase</h1>
 
-<p>A simple notes app connected to a Google Firestore database.</p>
-
-<div class="my-3">
-    <input @bind="newNoteText" class="form-control" placeholder="Enter a new note..." @onkeydown="HandleKeyDown" />
-    <button class="btn btn-primary mt-2" @onclick="AddNote">Add Note</button>
-</div>
-
-@if (notes == null)
-{
-    <p><em>Loading notes...</em></p>
-}
-else
-{
-    <ul class="list-group">
-        @foreach (var note in notes)
+<AuthorizeView>
+    <Authorized>
+        @* Check for the email_verified claim *@
+        @if (context.User.HasClaim("email_verified", "True"))
         {
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-                @note.Text
-                <button class="btn btn-danger btn-sm" @onclick="() => DeleteNote(note.Id)">Delete</button>
-            </li>
+            @* --- USER IS VERIFIED - SHOW THE NOTES APP --- *@
+            <div class="my-3">
+                <input @bind="newNoteText" class="form-control" placeholder="Enter a new note..." @onkeydown="HandleKeyDown" />
+                <button class="btn btn-primary mt-2" @onclick="AddNote">Add Note</button>
+            </div>
+
+            @if (notes == null && string.IsNullOrEmpty(errorMessage))
+            {
+                <p><em>Loading notes...</em></p>
+            }
+            else if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <p class="text-danger"><em>@errorMessage</em></p>
+            }
+            else
+            {
+                <ul class="list-group">
+                    @foreach (var note in notes)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            @note.Text
+                            <button class="btn btn-danger btn-sm" @onclick="() => DeleteNote(note.Id)">Delete</button>
+                        </li>
+                    }
+                </ul>
+            }
         }
-    </ul>
-}
+        else
+        {
+            @* --- USER IS NOT VERIFIED - SHOW A MESSAGE --- *@
+            <div class="alert alert-warning mt-4">
+                <h4>Please verify your email address.</h4>
+                <p>A verification link has been sent to <strong>@context.User.Identity.Name</strong>. Please check your inbox (and spam folder) to continue.</p>
+                <hr />
+                <button class="btn btn-info" @onclick="ResendVerificationEmail">Resend Verification Email</button>
+                @if (resendMessage != null)
+                {
+                    <p class="mt-2"><em>@resendMessage</em></p>
+                }
+            </div>
+        }
+    </Authorized>
+</AuthorizeView>
 
 @code {
     private List<Note>? notes;
     private string newNoteText = string.Empty;
+    private string errorMessage;
+    private string resendMessage;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadNotes();
+        // Only try to load notes if the user is verified.
+        // We'll use a local variable to check, as the UI context isn't available yet.
+        var authState = await ((AuthenticationStateProvider)authStateProvider).GetAuthenticationStateAsync();
+        if (authState.User.HasClaim("email_verified", "True"))
+        {
+            await LoadNotes();
+        }
+    }
+    
+    private async Task ResendVerificationEmail()
+    {
+        resendMessage = "Sending...";
+        var token = await localStorage.GetItemAsync<string>("authToken");
+        if (token != null)
+        {
+            await AuthService.SendVerificationEmailAsync(token);
+            resendMessage = "A new verification email has been sent.";
+        }
+        else
+        {
+            resendMessage = "Could not send email. Please log in again.";
+        }
     }
 
     private async Task LoadNotes()
     {
-        notes = await FirebaseService.GetNotesAsync();
-        StateHasChanged(); // Re-render the component
+        try
+        {
+            errorMessage = null;
+            notes = await FirebaseService.GetNotesAsync();
+        }
+        catch (Exception)
+        {
+            // Catch the 403 Forbidden error gracefully
+            errorMessage = "Could not load notes. Your session might have expired. Please try logging out and in again.";
+        }
+        StateHasChanged();
     }
 
     private async Task AddNote()

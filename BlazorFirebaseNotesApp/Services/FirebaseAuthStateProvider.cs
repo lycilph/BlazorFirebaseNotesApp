@@ -63,6 +63,11 @@ public class FirebaseAuthStateProvider : AuthenticationStateProvider
             claims.Add(new Claim(ClaimTypes.NameIdentifier, userId.ToString()));
         if (keyValuePairs.TryGetValue("email", out var email))
             claims.Add(new Claim(ClaimTypes.Email, email.ToString()));
+        if (keyValuePairs.TryGetValue("email_verified", out var emailVerified))
+        {
+            // The claim value must be a string. We'll use "True" or "False".
+            claims.Add(new Claim("email_verified", emailVerified.ToString()));
+        }
 
         return claims;
     }

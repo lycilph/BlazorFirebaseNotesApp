@@ -27,6 +27,18 @@ public class AuthService
         var response = await _http.PostAsJsonAsync($"{BaseUrl}signUp?key={_apiKey}", request);
         return await response.Content.ReadFromJsonAsync<FirebaseAuthResponse>();
     }
+
+    public async Task SendVerificationEmailAsync(string idToken)
+    {
+        var request = new { requestType = "VERIFY_EMAIL", idToken };
+        await _http.PostAsJsonAsync($"{BaseUrl}sendOobCode?key={_apiKey}", request);
+    }
+
+    public async Task ConfirmEmailVerificationAsync(string oobCode)
+    {
+        var request = new { oobCode };
+        await _http.PostAsJsonAsync($"{BaseUrl}update?key={_apiKey}", request);
+    }
 }
 
 // Helper class to deserialize Firebase Auth responses

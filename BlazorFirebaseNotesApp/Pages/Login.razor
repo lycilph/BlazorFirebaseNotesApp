@@ -8,7 +8,7 @@
 
 <h3>Login</h3>
 
-<div class="card">
+<div class="card" @onkeydown="HandleKeyDown">
     <div class="card-body">
         <div class="form-group">
             <label>Email address</label>
@@ -35,24 +35,24 @@
     // This property will be populated from the URL, e.g., /login?returnUrl=%2F
     [SupplyParameterFromQuery]
     public string ReturnUrl { get; set; }
+    
+    // This is the new method that handles the key press
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        // Check if the key pressed was "Enter"
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(email) && !string.IsNullOrWhiteSpace(password))
+        {
+            // If so, call the HandleLogin method
+            await HandleLogin();
+        }
+    }
 
     private async Task HandleLogin()
-    {
-        await Authenticate(async () => await AuthService.LoginAsync(email, password));
-    }
-
-    private async Task HandleSignUp()
-    {
-        await Authenticate(async () => await AuthService.SignUpAsync(email, password));
-    }
-
-    // A shared method to handle both login and sign up logic
-    private async Task Authenticate(Func<Task<FirebaseAuthResponse>> authAction)
     {
         errorMessage = string.Empty;
         try
         {
-            var response = await authAction();
+            var response = await AuthService.LoginAsync(email, password);
             if (!string.IsNullOrEmpty(response?.idToken))
             {
                 await localStorage.SetItemAsync("authToken", response.idToken);
@@ -68,6 +68,35 @@
             else
             {
                 errorMessage = "Authentication failed. Please check your credentials or the email may be in use.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred: {ex.Message}";
+        }
+    }
+
+    private async Task HandleSignUp()
+    {
+        // We'll handle signup separately to include the email verification step
+        errorMessage = null;
+        try
+        {
+            var response = await AuthService.SignUpAsync(email, password);
+            if (!string.IsNullOrEmpty(response?.idToken))
+            {
+                // Sign up was successful, now send the verification email
+                await AuthService.SendVerificationEmailAsync(response.idToken);
+
+                // Now proceed with the normal login flow
+                await localStorage.SetItemAsync("authToken", response.idToken);
+                authStateProvider.NotifyUserAuthentication(response.idToken);
+                await Task.Yield();
+                NavigationManager.NavigateTo(ReturnUrl ?? "", forceLoad: false);
+            }
+            else
+            {
+                errorMessage = "Sign up failed. The email may already be in use.";
             }
         }
         catch (Exception ex)

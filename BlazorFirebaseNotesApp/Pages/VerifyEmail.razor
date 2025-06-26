@@ -1,0 +1,61 @@
+﻿@page "/verify-email"
+@inject AuthService AuthService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Verify Email</PageTitle>
+
+<h3>Email Verification</h3>
+
+@if (isProcessing)
+{
+    <p><em>Verifying your email, please wait...</em></p>
+}
+else if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+else
+{
+    <div class="alert alert-success">
+        Your email has been successfully verified!
+    </div>
+}
+
+<p>
+    You can now proceed to the login page.
+    <a href="login">Login Now</a>
+</p>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string mode { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string oobCode { get; set; }
+
+    private bool isProcessing = true;
+    private string errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (mode != "verifyEmail" || string.IsNullOrEmpty(oobCode))
+        {
+            errorMessage = "Invalid verification link.";
+            isProcessing = false;
+            return;
+        }
+
+        try
+        {
+            await AuthService.ConfirmEmailVerificationAsync(oobCode);
+        }
+        catch (Exception)
+        {
+            errorMessage = "Verification failed. The link may be expired or invalid. Please try logging in and resending the verification email.";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+}
